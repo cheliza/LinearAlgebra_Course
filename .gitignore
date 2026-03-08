@@ -1,0 +1,27 @@
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+*.pdb
+*.exe
+*.dll
+*.db
+*.DS_Store
+*.vscode/
+# Visual Studio
+.vscode/
+# Build results
+build/
+# NuGet Packages
+*.nupkg
+# Test results
+TestResults/
+# Others
+*.swp
+*.tmp
+*.bak
+*.old
+*.orig
