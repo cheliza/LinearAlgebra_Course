@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text;
-
+using System.Collections.Generic;
 namespace MatrixCalculator
 {
     public class Matrix
@@ -9,19 +9,17 @@ namespace MatrixCalculator
         private double[,] data;
         public int Rows { get; private set; }
         public int Columns { get; private set; }
-
-        // Конструктор без параметрів
         public Matrix()
         {
             Rows = 0;
             Columns = 0;
             data = new double[0, 0];
         }
-
+        public int Cols => data.GetLength(1);
         public Matrix(int rows, int columns)
         {
             if (rows <= 0 || columns <= 0)
-                throw new ArgumentException("Розміри матриці мають бути додатними числами");
+                throw new ArgumentException("The dimensions of the matrix must be positive numbers");
 
             Rows = rows;
             Columns = columns;
@@ -44,13 +42,13 @@ namespace MatrixCalculator
             get
             {
                 if (i < 0 || i >= Rows || j < 0 || j >= Columns)
-                    throw new IndexOutOfRangeException("Індекс виходить за межі матриці");
+                    throw new IndexOutOfRangeException("Index is out of bounds");
                 return data[i, j];
             }
             set
             {
                 if (i < 0 || i >= Rows || j < 0 || j >= Columns)
-                    throw new IndexOutOfRangeException("Індекс виходить за межі матриці");
+                    throw new IndexOutOfRangeException("Index is out of bounds");
                 data[i, j] = value;
             }
         }
@@ -58,7 +56,7 @@ namespace MatrixCalculator
         public void RandomInitialize(int minValue, int maxValue)
         {
             if (minValue > maxValue)
-                throw new ArgumentException("Мінімальне значення не може бути більшим за максимальне");
+                throw new ArgumentException("The minimum value cannot be greater than the maximum value"); maxValue = minValue;
 
             Random rand = new Random();
             for (int i = 0; i < Rows; i++)
@@ -73,15 +71,15 @@ namespace MatrixCalculator
         public static Matrix ReadFromFile(string filename)
         {
             if (string.IsNullOrEmpty(filename))
-                throw new ArgumentException("Ім'я файлу не може бути порожнім");
+                throw new ArgumentException("File name cannot be empty");
 
             try
             {
                 string[] lines = File.ReadAllLines(filename);
                 if (lines.Length == 0)
-                    throw new Exception("Файл порожній");
+                    throw new Exception("File is empty");
 
-                var nonEmptyLines = new System.Collections.Generic.List<string>();
+                var nonEmptyLines = new List<string>();
                 foreach (string line in lines)
                 {
                     if (!string.IsNullOrWhiteSpace(line))
@@ -89,7 +87,7 @@ namespace MatrixCalculator
                 }
 
                 if (nonEmptyLines.Count == 0)
-                    throw new Exception("Файл не містить даних");
+                    throw new Exception("File does not contain any data ");
 
                 string[] firstLine = nonEmptyLines[0].Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                 int rows = nonEmptyLines.Count;
@@ -101,14 +99,14 @@ namespace MatrixCalculator
                 {
                     string[] values = nonEmptyLines[i].Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                     if (values.Length != cols)
-                        throw new Exception($"Неправильний формат у рядку {i + 1}: очікувалося {cols} значень, отримано {values.Length}");
+                        throw new Exception($"Invalid format in row {i + 1}: expected {cols} values, got {values.Length}");
 
                     for (int j = 0; j < cols; j++)
                     {
                         if (!double.TryParse(values[j].Replace('.', ','), out double number))
                         {
                             if (!double.TryParse(values[j].Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out number))
-                                throw new Exception($"Неправильне число '{values[j]}' у рядку {i + 1}, стовпці {j + 1}");
+                                throw new Exception($"Invalid number '{values[j]}' in row {i + 1}, column {j + 1}");
                         }
                         matrix[i, j] = number;
                     }
@@ -117,14 +115,14 @@ namespace MatrixCalculator
             }
             catch (Exception ex)
             {
-                throw new Exception($"Помилка читання файлу: {ex.Message}");
+                throw new Exception($"Error reading file: {ex.Message}");
             }
         }
 
         public void WriteToFile(string filename)
         {
             if (string.IsNullOrEmpty(filename))
-                throw new ArgumentException("Ім'я файлу не може бути порожнім");
+                throw new ArgumentException("File name cannot be empty");
 
             try
             {
@@ -145,17 +143,17 @@ namespace MatrixCalculator
             }
             catch (Exception ex)
             {
-                throw new Exception($"Помилка запису у файл: {ex.Message}");
+                throw new Exception($"Error writing to file: {ex.Message}");
             }
         }
 
         public static Matrix operator +(Matrix a, Matrix b)
         {
             if (a == null || b == null)
-                throw new ArgumentNullException("Матриці не можуть бути null");
+                throw new ArgumentNullException("Matrices cannot be null");
 
             if (a.Rows != b.Rows || a.Columns != b.Columns)
-                throw new InvalidOperationException($"Неможливо додати матриці: різні розміри ({a.Rows}x{a.Columns} та {b.Rows}x{b.Columns})");
+                throw new InvalidOperationException($"Cannot add matrices: different dimensions ({a.Rows}x{a.Columns} and {b.Rows}x{b.Columns})");
 
             Matrix result = new Matrix(a.Rows, a.Columns);
             for (int i = 0; i < a.Rows; i++)
@@ -167,10 +165,10 @@ namespace MatrixCalculator
         public static Matrix operator -(Matrix a, Matrix b)
         {
             if (a == null || b == null)
-                throw new ArgumentNullException("Матриці не можуть бути null");
+                throw new ArgumentNullException("Matrices cannot be null");
 
             if (a.Rows != b.Rows || a.Columns != b.Columns)
-                throw new InvalidOperationException($"Неможливо відняти матриці: різні розміри ({a.Rows}x{a.Columns} та {b.Rows}x{b.Columns})");
+                throw new InvalidOperationException($"Cannot subtract matrices: different dimensions ({a.Rows}x{a.Columns} and {b.Rows}x{b.Columns})");
 
             Matrix result = new Matrix(a.Rows, a.Columns);
             for (int i = 0; i < a.Rows; i++)
@@ -182,10 +180,10 @@ namespace MatrixCalculator
         public static Matrix operator *(Matrix a, Matrix b)
         {
             if (a == null || b == null)
-                throw new ArgumentNullException("Матриці не можуть бути null");
+                throw new ArgumentNullException("Matrices cannot be null");
 
             if (a.Columns != b.Rows)
-                throw new InvalidOperationException($"Неможливо перемножити матриці: кількість стовпців першої матриці ({a.Columns}) не дорівнює кількості рядків другої ({b.Rows})");
+                throw new InvalidOperationException($"Cannot multiply matrices: number of columns in first matrix ({a.Columns}) does not equal number of rows in second matrix ({b.Rows})");
 
             Matrix result = new Matrix(a.Rows, b.Columns);
             for (int i = 0; i < a.Rows; i++)
@@ -221,7 +219,7 @@ namespace MatrixCalculator
         public double MaxNorm()
         {
             if (Rows == 0 || Columns == 0)
-                throw new InvalidOperationException("Неможливо обчислити норму порожньої матриці");
+                throw new InvalidOperationException("Cannot compute norm of empty matrix");
 
             double max = Math.Abs(data[0, 0]);
             for (int i = 0; i < Rows; i++)
@@ -233,7 +231,7 @@ namespace MatrixCalculator
         public double FrobeniusNorm()
         {
             if (Rows == 0 || Columns == 0)
-                throw new InvalidOperationException("Неможливо обчислити норму порожньої матриці");
+                throw new InvalidOperationException("Cannot compute Frobenius norm of empty matrix");
 
             double sum = 0;
             for (int i = 0; i < Rows; i++)
@@ -269,7 +267,7 @@ namespace MatrixCalculator
         public override string ToString()
         {
             if (Rows == 0 || Columns == 0)
-                return "Матриця порожня";
+                return "Matrix is empty";
 
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < Rows; i++)

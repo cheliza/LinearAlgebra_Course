@@ -87,6 +87,8 @@ namespace MatrixCalculator
         private Button btnTestHilbert;
         private Button btnTestDiagonal;
 
+        private readonly string resourcesPath = @"D:\LNU\UniCourses\LinearAlgebra_Course\LinearAlgebra\LinearAlgebra\Resourses\";
+
         public MainForm()
         {
             InitializeComponent();
@@ -99,7 +101,7 @@ namespace MatrixCalculator
             this.Size = new Size(1500, 950);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.MinimumSize = new Size(1300, 750);
-            this.BackColor = Color.FromArgb(240, 242, 245); // Light gray background
+            this.BackColor = Color.FromArgb(240, 242, 245); 
 
             tabControl = new TabControl
             {
@@ -1596,6 +1598,13 @@ namespace MatrixCalculator
                 {
                     ofd.Title = isMatrixA ? "Select file with matrix A" : "Select file with matrix B";
                     ofd.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+
+                    // Set initial directory to resources path
+                    if (Directory.Exists(resourcesPath))
+                    {
+                        ofd.InitialDirectory = resourcesPath;
+                    }
+
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
                         Matrix matrix = Matrix.ReadFromFile(ofd.FileName);
@@ -1704,8 +1713,9 @@ namespace MatrixCalculator
                     MessageBox.Show("Inverse matrix exists only for square matrices!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
+                SLAE system = new SLAE(matrixA, new Vector(matrixA.Rows));
 
-                gaussSolver = new GaussianSolver(matrixA, new Vector(matrixA.Rows));
+                gaussSolver = new GaussianSolver(system);
                 Matrix inv = gaussSolver.Inverse();
                 matrixResult = inv;
                 rtbResult.Text = "A⁻¹ =\n" + inv.ToString();
@@ -1758,8 +1768,15 @@ namespace MatrixCalculator
                 if (!fileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
                     fileName += ".txt";
 
-                matrixResult.WriteToFile(fileName);
-                MessageBox.Show($"Result successfully saved to file: {fileName}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Ensure the resources directory exists
+                if (!Directory.Exists(resourcesPath))
+                {
+                    Directory.CreateDirectory(resourcesPath);
+                }
+
+                string fullPath = Path.Combine(resourcesPath, fileName);
+                matrixResult.WriteToFile(fullPath);
+                MessageBox.Show($"Result successfully saved to file: {fullPath}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
@@ -1805,6 +1822,13 @@ namespace MatrixCalculator
                 {
                     ofd.Title = isVectorA ? "Select file with vector A" : "Select file with vector B";
                     ofd.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+
+                    // Set initial directory to resources path
+                    if (Directory.Exists(resourcesPath))
+                    {
+                        ofd.InitialDirectory = resourcesPath;
+                    }
+
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
                         Vector vector = Vector.ReadFromFile(ofd.FileName);
@@ -1925,8 +1949,15 @@ namespace MatrixCalculator
                 if (!fileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
                     fileName += ".txt";
 
-                vectorResult.WriteToFile(fileName);
-                MessageBox.Show($"Result successfully saved to file: {fileName}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Ensure the resources directory exists
+                if (!Directory.Exists(resourcesPath))
+                {
+                    Directory.CreateDirectory(resourcesPath);
+                }
+
+                string fullPath = Path.Combine(resourcesPath, fileName);
+                vectorResult.WriteToFile(fullPath);
+                MessageBox.Show($"Result successfully saved to file: {fullPath}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
@@ -2060,8 +2091,8 @@ namespace MatrixCalculator
                     MessageBox.Show("Matrix A must be square!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
-
-                gaussSolver = new GaussianSolver(A, b);
+                SLAE system = new SLAE(A, b);
+                gaussSolver = new GaussianSolver(system);
                 gaussSolver.Solve();
 
                 // Output log
@@ -2122,7 +2153,8 @@ namespace MatrixCalculator
                 Matrix A = GetMatrixFromDGV();
                 Vector b = GetVectorFromDGV();
 
-                gaussSolver = new GaussianSolver(A, b);
+                SLAE system = new SLAE(A, b);
+                gaussSolver = new GaussianSolver(system);
                 gaussSolver.Decompose();
 
                 // Output log
@@ -2165,7 +2197,8 @@ namespace MatrixCalculator
                     return;
                 }
 
-                gaussSolver = new GaussianSolver(A, new Vector(A.Rows));
+                SLAE system = new SLAE(A, new Vector(A.Rows));
+                gaussSolver = new GaussianSolver(system);
                 Matrix inv = gaussSolver.Inverse();
 
                 // Output log
@@ -2202,7 +2235,8 @@ namespace MatrixCalculator
                 LogSLAE($"||A|| = {normA:E6}");
 
                 LogSLAE("Step 2: Calculate inverse matrix A⁻¹");
-                gaussSolver = new GaussianSolver(A, new Vector(A.Rows));
+                SLAE system = new SLAE(A, new Vector(A.Rows));
+                gaussSolver = new GaussianSolver(system);
                 Matrix inv = gaussSolver.Inverse();
 
                 rtbSLAELog.AppendText(gaussSolver.StepLog);
@@ -2286,6 +2320,13 @@ namespace MatrixCalculator
                 {
                     ofd.Title = "Select file with equation system";
                     ofd.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+
+                    // Set initial directory to resources path
+                    if (Directory.Exists(resourcesPath))
+                    {
+                        ofd.InitialDirectory = resourcesPath;
+                    }
+
                     if (ofd.ShowDialog() == DialogResult.OK)
                     {
                         string[] lines = File.ReadAllLines(ofd.FileName);
@@ -2329,6 +2370,13 @@ namespace MatrixCalculator
                     sfd.Title = "Save equation system";
                     sfd.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
                     sfd.FileName = "slae_system.txt";
+
+                    // Set initial directory to resources path
+                    if (Directory.Exists(resourcesPath))
+                    {
+                        sfd.InitialDirectory = resourcesPath;
+                    }
+
                     if (sfd.ShowDialog() == DialogResult.OK)
                     {
                         using (StreamWriter sw = new StreamWriter(sfd.FileName))
@@ -2378,7 +2426,15 @@ namespace MatrixCalculator
                 if (!fileName.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
                     fileName += ".txt";
 
-                using (StreamWriter sw = new StreamWriter(fileName))
+                // Ensure the resources directory exists
+                if (!Directory.Exists(resourcesPath))
+                {
+                    Directory.CreateDirectory(resourcesPath);
+                }
+
+                string fullPath = Path.Combine(resourcesPath, fileName);
+
+                using (StreamWriter sw = new StreamWriter(fullPath))
                 {
                     sw.WriteLine("# SYSTEM OF LINEAR ALGEBRAIC EQUATIONS SOLUTION RESULT");
                     sw.WriteLine($"# Dimension: {dgvSLAEA.RowCount}");
@@ -2422,7 +2478,7 @@ namespace MatrixCalculator
                     }
                 }
 
-                MessageBox.Show($"Result successfully saved to file: {fileName}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Result successfully saved to file: {fullPath}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
