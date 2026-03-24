@@ -3,11 +3,6 @@ using System.Text;
 
 namespace MatrixCalculator
 {
-    /// <summary>
-    /// Gauss-Seidel iterative method for solving SLAE Ax = b.
-    /// At each iteration uses already-updated components (unlike Jacobi).
-    /// Convergence is guaranteed when matrix is strictly diagonally dominant.
-    /// </summary>
     public class SeidelSolver
     {
         private readonly SLAE system;
@@ -30,10 +25,6 @@ namespace MatrixCalculator
             this.maxIterations = maxIterations;
         }
 
-        /// <summary>
-        /// Checks sufficient convergence condition: strict diagonal dominance.
-        /// |a_ii| > sum_{j!=i} |a_ij| for every row i.
-        /// </summary>
         public static bool CheckDiagonalDominance(Matrix A)
         {
             for (int i = 0; i < A.Rows; i++)
@@ -60,30 +51,26 @@ namespace MatrixCalculator
             log.AppendLine($"Tolerance ε = {tolerance:E2},  Max iterations = {maxIterations}");
             log.AppendLine();
 
-            // Check for zero diagonal elements
             for (int i = 0; i < n; i++)
                 if (Math.Abs(system.A[i, i]) < 1e-15)
                     throw new Exception($"Zero diagonal element at row {i + 1}. " +
                                         "Rearrange equations so all diagonal elements are non-zero.");
 
-            Vector x = new Vector(n); // initial approximation x^(0) = 0
-
+            Vector x = new Vector(n);
             Converged = false;
             for (Iterations = 1; Iterations <= maxIterations; Iterations++)
             {
                 Vector xPrev = new Vector(x);
 
-                // Seidel update: for component i use already-updated x[0..i-1]
                 for (int i = 0; i < n; i++)
                 {
                     double s = system.B[i];
                     for (int j = 0; j < n; j++)
                         if (j != i)
-                            s -= system.A[i, j] * x[j]; // x[j<i] already updated this iteration
+                            s -= system.A[i, j] * x[j]; 
                     x[i] = s / system.A[i, i];
                 }
 
-                // Convergence check: max-norm of the change
                 double maxDiff = 0;
                 for (int i = 0; i < n; i++)
                     maxDiff = Math.Max(maxDiff, Math.Abs(x[i] - xPrev[i]));
@@ -110,7 +97,6 @@ namespace MatrixCalculator
             for (int i = 0; i < n; i++)
                 log.AppendLine($"  x{i + 1} = {x[i]:F8}");
 
-            // Residual verification
             Vector residual = system.CalculateResidual();
             double maxR = 0;
             for (int i = 0; i < residual.Size; i++)

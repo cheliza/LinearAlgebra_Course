@@ -2540,10 +2540,6 @@ namespace MatrixCalculator
             gaussSolver = null;
         }
 
-        // ════════════════════════════════════════════════════════════════════
-        //   SEIDEL METHOD TAB
-        // ════════════════════════════════════════════════════════════════════
-
         private void CreateSeidelTab()
         {
             var mainPanel = new TableLayoutPanel
@@ -2559,7 +2555,6 @@ namespace MatrixCalculator
             mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 55F));
             mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
 
-            // ── Panel A: matrix input ─────────────────────────────────────
             var panelA = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle, Padding = new Padding(8), BackColor = Color.White };
             var lblA = new Label { Text = "Matrix A (square)", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94), Location = new Point(8, 8), AutoSize = true };
 
