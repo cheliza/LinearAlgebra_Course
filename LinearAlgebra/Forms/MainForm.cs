@@ -87,6 +87,39 @@ namespace MatrixCalculator
         private Button btnTestHilbert;
         private Button btnTestDiagonal;
 
+        // ── Seidel method tab ─────────────────────────────────────────────────
+        private TabPage tabSeidel;
+        private NumericUpDown nudSeidelSize;
+        private DataGridView dgvSeidelA;
+        private DataGridView dgvSeidelB;
+        private DataGridView dgvSeidelX;
+        private TextBox txtSeidelTolerance;
+        private TextBox txtSeidelMaxIter;
+        private RichTextBox rtbSeidelLog;
+        private Label lblSeidelStatus;
+        private Label lblSeidelIterations;
+        private Button btnSeidelSolve;
+        private Button btnSeidelConvergent;
+        private Button btnSeidelDivergent;
+        private Button btnSeidelRandom;
+        private Button btnSeidelClear;
+
+        // ── Band Gauss tab ────────────────────────────────────────────────────
+        private TabPage tabBandGauss;
+        private NumericUpDown nudBandSize;
+        private NumericUpDown nudBandP;
+        private NumericUpDown nudBandQ;
+        private DataGridView dgvBandA;
+        private DataGridView dgvBandB;
+        private DataGridView dgvBandX;
+        private RichTextBox rtbBandVector;
+        private RichTextBox rtbBandLog;
+        private Label lblBandStatus;
+        private Button btnBandSolve;
+        private Button btnBandExample;
+        private Button btnBandClear;
+        private Button btnBandResize;
+
         private readonly string resourcesPath = @"D:\LNU\UniCourses\LinearAlgebra_Course\LinearAlgebra\LinearAlgebra\Resourses\";
 
         public MainForm()
@@ -113,14 +146,20 @@ namespace MatrixCalculator
             tabMatrices = new TabPage("Matrices");
             tabVectors = new TabPage("Vectors");
             tabSLAE = new TabPage("SLAE");
+            tabSeidel = new TabPage("Seidel Method");
+            tabBandGauss = new TabPage("Band Gauss");
 
             CreateMatricesTab();
             CreateVectorsTab();
             CreateSLAETab();
+            CreateSeidelTab();
+            CreateBandGaussTab();
 
             tabControl.TabPages.Add(tabMatrices);
             tabControl.TabPages.Add(tabVectors);
             tabControl.TabPages.Add(tabSLAE);
+            tabControl.TabPages.Add(tabSeidel);
+            tabControl.TabPages.Add(tabBandGauss);
 
             this.Controls.Add(tabControl);
         }
@@ -1217,7 +1256,7 @@ namespace MatrixCalculator
 
             btnTestHilbert = new Button
             {
-                Text = "Hilbert",
+                Text = "",
                 Location = new Point(290, 6),
                 Size = new Size(90, 22),
                 BackColor = Color.FromArgb(52, 152, 219),
@@ -1230,7 +1269,7 @@ namespace MatrixCalculator
 
             btnTestDiagonal = new Button
             {
-                Text = "Diagonal",
+                Text = "",
                 Location = new Point(390, 6),
                 Size = new Size(95, 22),
                 BackColor = Color.FromArgb(241, 196, 15),
@@ -2499,6 +2538,905 @@ namespace MatrixCalculator
             rtbSLAELog.Clear();
             lblStatus.Text = "Status: Ready";
             gaussSolver = null;
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        //   SEIDEL METHOD TAB
+        // ════════════════════════════════════════════════════════════════════
+
+        private void CreateSeidelTab()
+        {
+            var mainPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 2,
+                Padding = new Padding(8)
+            };
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42F));
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22F));
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36F));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 55F));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
+
+            // ── Panel A: matrix input ─────────────────────────────────────
+            var panelA = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle, Padding = new Padding(8), BackColor = Color.White };
+            var lblA = new Label { Text = "Matrix A (square)", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94), Location = new Point(8, 8), AutoSize = true };
+
+            var sizePanel = new Panel { Location = new Point(8, 32), Size = new Size(380, 26) };
+            var lblSz = new Label { Text = "Size n:", Location = new Point(0, 5), AutoSize = true, ForeColor = Color.FromArgb(52, 73, 94) };
+            nudSeidelSize = new NumericUpDown { Minimum = 2, Maximum = 20, Value = 3, Location = new Point(58, 2), Width = 50, BorderStyle = BorderStyle.FixedSingle };
+            var btnResS = new Button { Text = "Resize", Location = new Point(114, 1), Size = new Size(70, 22), BackColor = Color.FromArgb(52, 152, 219), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
+            btnResS.FlatAppearance.BorderSize = 0;
+            btnResS.Click += (s, e) => UpdateSeidelSize((int)nudSeidelSize.Value);
+            sizePanel.Controls.AddRange(new Control[] { lblSz, nudSeidelSize, btnResS });
+
+            var scrollA = new Panel { Location = new Point(8, 63), Size = new Size(390, 210), AutoScroll = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(236, 240, 241) };
+            dgvSeidelA = CreateSlaeStyleDGV(600, 350);
+            scrollA.Controls.Add(dgvSeidelA);
+            panelA.Controls.AddRange(new Control[] { lblA, sizePanel, scrollA });
+
+            // ── Panel B: vector B + settings ─────────────────────────────
+            var panelB = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle, Padding = new Padding(8), BackColor = Color.White };
+            var lblB = new Label { Text = "Vector B", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94), Location = new Point(8, 8), AutoSize = true };
+
+            var scrollB = new Panel { Location = new Point(8, 35), Size = new Size(210, 175), AutoScroll = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(236, 240, 241) };
+            dgvSeidelB = new DataGridView
+            {
+                AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = true,
+                ColumnHeadersHeight = 25, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
+                ColumnCount = 1, Width = 300, Height = 500,
+                Font = new Font("Segoe UI", 8), BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None, GridColor = Color.FromArgb(189, 195, 199)
+            };
+            dgvSeidelB.EnableHeadersVisualStyles = false;
+            dgvSeidelB.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgvSeidelB.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgvSeidelB.RowHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgvSeidelB.RowHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgvSeidelB.Columns[0].HeaderText = "b";
+            dgvSeidelB.Columns[0].Width = 110;
+            scrollB.Controls.Add(dgvSeidelB);
+
+            var gbSet = new GroupBox { Text = "Parameters", Location = new Point(8, 218), Size = new Size(210, 90), Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94) };
+            var lblTol = new Label { Text = "Tolerance:", Location = new Point(8, 22), AutoSize = true, ForeColor = Color.FromArgb(52, 73, 94) };
+            txtSeidelTolerance = new TextBox { Text = "0.0001", Location = new Point(80, 19), Width = 110, BorderStyle = BorderStyle.FixedSingle };
+            var lblMx = new Label { Text = "Max iter:", Location = new Point(8, 52), AutoSize = true, ForeColor = Color.FromArgb(52, 73, 94) };
+            txtSeidelMaxIter = new TextBox { Text = "2000", Location = new Point(80, 49), Width = 70, BorderStyle = BorderStyle.FixedSingle };
+            gbSet.Controls.AddRange(new Control[] { lblTol, txtSeidelTolerance, lblMx, txtSeidelMaxIter });
+
+            panelB.Controls.AddRange(new Control[] { lblB, scrollB, gbSet });
+
+            // ── Panel X: solution ─────────────────────────────────────────
+            var panelX = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle, Padding = new Padding(8), BackColor = Color.White };
+            var lblX = new Label { Text = "Solution X", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94), Location = new Point(8, 8), AutoSize = true };
+            lblSeidelIterations = new Label { Text = "Iterations: —", Location = new Point(8, 34), AutoSize = true, Font = new Font("Segoe UI", 9), ForeColor = Color.FromArgb(52, 73, 94) };
+            lblSeidelStatus = new Label { Text = "Status: Ready", Location = new Point(8, 54), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94) };
+
+            var scrollX = new Panel { Location = new Point(8, 80), Size = new Size(280, 200), AutoScroll = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(236, 240, 241) };
+            dgvSeidelX = new DataGridView
+            {
+                AllowUserToAddRows = false, AllowUserToDeleteRows = false, ReadOnly = true,
+                RowHeadersVisible = true, ColumnHeadersHeight = 25,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
+                ColumnCount = 1, Width = 400, Height = 500,
+                BackgroundColor = Color.FromArgb(245, 247, 250),
+                Font = new Font("Segoe UI", 8), BorderStyle = BorderStyle.None,
+                GridColor = Color.FromArgb(189, 195, 199)
+            };
+            dgvSeidelX.EnableHeadersVisualStyles = false;
+            dgvSeidelX.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgvSeidelX.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgvSeidelX.RowHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgvSeidelX.RowHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgvSeidelX.Columns[0].HeaderText = "x";
+            dgvSeidelX.Columns[0].Width = 160;
+            scrollX.Controls.Add(dgvSeidelX);
+            panelX.Controls.AddRange(new Control[] { lblX, lblSeidelIterations, lblSeidelStatus, scrollX });
+
+            // ── Bottom panel: buttons + TESTS + log ──────────────────────
+            var panelBot = new Panel { Dock = DockStyle.Fill, Padding = new Padding(8), BackColor = Color.White };
+
+            // Main action buttons (top row)
+            var btnRow = new Panel { Location = new Point(8, 6), Size = new Size(1200, 38), AutoScroll = true };
+            btnSeidelSolve = MakeBtn("Solve (Seidel)", 0, Color.FromArgb(46, 204, 113), 130);
+            btnSeidelRandom = MakeBtn("Random", 140, Color.FromArgb(52, 152, 219), 90);
+            btnSeidelClear  = MakeBtn("Clear",  240, Color.FromArgb(231, 76, 60),   80);
+            btnRow.Controls.AddRange(new Control[] { btnSeidelSolve, btnSeidelRandom, btnSeidelClear });
+
+            // TESTS panel — styled the same as in the SLAE tab
+            var seidelTestPanel = new Panel
+            {
+                Location = new Point(8, 50),
+                Size = new Size(1180, 35),
+                BackColor = Color.FromArgb(236, 240, 241),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            var lblSeidelTests = new Label
+            {
+                Text = "TESTS:",
+                Location = new Point(8, 10),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = Color.FromArgb(52, 73, 94)
+            };
+            btnSeidelConvergent = new Button
+            {
+                Text = "Convergent (diag. dominant 4×4)",
+                Location = new Point(70, 6), Size = new Size(230, 22),
+                BackColor = Color.FromArgb(46, 204, 113), ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnSeidelConvergent.FlatAppearance.BorderSize = 0;
+            btnSeidelDivergent = new Button
+            {
+                Text = "Divergent (NOT diag. dominant 3×3)",
+                Location = new Point(310, 6), Size = new Size(250, 22),
+                BackColor = Color.FromArgb(231, 76, 60), ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnSeidelDivergent.FlatAppearance.BorderSize = 0;
+            seidelTestPanel.Controls.AddRange(new Control[] { lblSeidelTests, btnSeidelConvergent, btnSeidelDivergent });
+
+            var lblLog  = new Label  { Text = "Log / Iterations:", Location = new Point(8, 90), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94) };
+            var logPanel = new Panel { Location = new Point(8, 110), Size = new Size(1180, 130), BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(236, 240, 241), AutoScroll = true };
+            rtbSeidelLog = new RichTextBox { Width = 3000, Height = 500, ReadOnly = true, Font = new Font("Consolas", 8), BackColor = Color.White, WordWrap = false, BorderStyle = BorderStyle.None };
+            logPanel.Controls.Add(rtbSeidelLog);
+
+            panelBot.Controls.AddRange(new Control[] { btnRow, seidelTestPanel, lblLog, logPanel });
+
+            mainPanel.Controls.Add(panelA, 0, 0);
+            mainPanel.Controls.Add(panelB, 1, 0);
+            mainPanel.Controls.Add(panelX, 2, 0);
+            mainPanel.Controls.Add(panelBot, 0, 1);
+            mainPanel.SetColumnSpan(panelBot, 3);
+
+            tabSeidel.Controls.Add(mainPanel);
+
+            UpdateSeidelSize(3);
+
+            btnSeidelSolve.Click += BtnSeidelSolve_Click;
+            btnSeidelConvergent.Click += BtnSeidelConvergent_Click;
+            btnSeidelDivergent.Click += BtnSeidelDivergent_Click;
+            btnSeidelRandom.Click += BtnSeidelRandom_Click;
+            btnSeidelClear.Click += BtnSeidelClear_Click;
+        }
+
+        private DataGridView CreateSlaeStyleDGV(int w, int h)
+        {
+            var dgv = new DataGridView
+            {
+                AllowUserToAddRows = false, AllowUserToDeleteRows = false,
+                RowHeadersVisible = true, ColumnHeadersHeight = 25,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
+                Width = w, Height = h,
+                Font = new Font("Segoe UI", 8), BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None, GridColor = Color.FromArgb(189, 195, 199)
+            };
+            dgv.EnableHeadersVisualStyles = false;
+            dgv.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgv.RowHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgv.RowHeadersDefaultCellStyle.ForeColor = Color.White;
+            return dgv;
+        }
+
+        private Button MakeBtn(string text, int x, Color back, int width = 100)
+        {
+            var btn = new Button
+            {
+                Text = text, Location = new Point(x, 4), Size = new Size(width, 30),
+                BackColor = back, ForeColor = Color.White, FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8, FontStyle.Bold), Cursor = Cursors.Hand
+            };
+            btn.FlatAppearance.BorderSize = 0;
+            return btn;
+        }
+
+        private void UpdateSeidelSize(int n)
+        {
+            if (dgvSeidelA == null) return;
+            int cw = Math.Max(50, 370 / n);
+
+            dgvSeidelA.ColumnCount = n;
+            dgvSeidelA.RowCount = n;
+            for (int j = 0; j < n; j++) { dgvSeidelA.Columns[j].Width = cw; dgvSeidelA.Columns[j].HeaderText = $"x{j + 1}"; }
+            for (int i = 0; i < n; i++)
+            {
+                dgvSeidelA.Rows[i].Height = 22;
+                dgvSeidelA.Rows[i].HeaderCell.Value = $"r{i + 1}";
+                for (int j = 0; j < n; j++)
+                    if (dgvSeidelA.Rows[i].Cells[j].Value == null || string.IsNullOrEmpty(dgvSeidelA.Rows[i].Cells[j].Value.ToString()))
+                        dgvSeidelA.Rows[i].Cells[j].Value = "0";
+            }
+            dgvSeidelA.Width = Math.Max(380, n * (cw + 15));
+            dgvSeidelA.Height = Math.Max(300, n * 24);
+
+            dgvSeidelB.RowCount = n;
+            for (int i = 0; i < n; i++)
+            {
+                dgvSeidelB.Rows[i].Height = 22;
+                dgvSeidelB.Rows[i].HeaderCell.Value = $"r{i + 1}";
+                if (dgvSeidelB.Rows[i].Cells[0].Value == null || string.IsNullOrEmpty(dgvSeidelB.Rows[i].Cells[0].Value.ToString()))
+                    dgvSeidelB.Rows[i].Cells[0].Value = "0";
+            }
+            dgvSeidelB.Height = Math.Max(400, n * 24);
+
+            dgvSeidelX.RowCount = n;
+            for (int i = 0; i < n; i++)
+            {
+                dgvSeidelX.Rows[i].Height = 22;
+                dgvSeidelX.Rows[i].HeaderCell.Value = $"x{i + 1}";
+                dgvSeidelX.Rows[i].Cells[0].Value = "";
+            }
+            dgvSeidelX.Height = Math.Max(400, n * 24);
+        }
+
+        private Matrix GetSeidelMatrixFromDGV()
+        {
+            int n = dgvSeidelA.RowCount;
+            var A = new Matrix(n, n);
+            for (int i = 0; i < n; i++)
+                for (int j = 0; j < n; j++)
+                {
+                    double.TryParse(dgvSeidelA.Rows[i].Cells[j].Value?.ToString(), out double v);
+                    A[i, j] = v;
+                }
+            return A;
+        }
+
+        private Vector GetSeidelVectorFromDGV()
+        {
+            int n = dgvSeidelB.RowCount;
+            var b = new Vector(n);
+            for (int i = 0; i < n; i++)
+            {
+                double.TryParse(dgvSeidelB.Rows[i].Cells[0].Value?.ToString(), out double v);
+                b[i] = v;
+            }
+            return b;
+        }
+
+        private void BtnSeidelSolve_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                rtbSeidelLog.Clear();
+                Matrix A = GetSeidelMatrixFromDGV();
+                Vector b = GetSeidelVectorFromDGV();
+
+                double tol;
+                if (!double.TryParse(txtSeidelTolerance.Text.Replace(',', '.'),
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out tol) || tol <= 0)
+                    throw new Exception("Tolerance must be a positive number (e.g. 0.0001).");
+
+                int maxIter;
+                if (!int.TryParse(txtSeidelMaxIter.Text, out maxIter) || maxIter <= 0)
+                    throw new Exception("Max iterations must be a positive integer.");
+
+                var slae = new SLAE(A, b);
+                var solver = new SeidelSolver(slae, tol, maxIter);
+                solver.Solve();
+
+                rtbSeidelLog.Text = solver.Log;
+
+                // Display solution
+                for (int i = 0; i < slae.X.Size; i++)
+                    dgvSeidelX.Rows[i].Cells[0].Value = slae.X[i].ToString("F8");
+
+                lblSeidelIterations.Text = $"Iterations: {solver.Iterations}";
+                if (solver.Converged)
+                {
+                    lblSeidelStatus.Text = "Status: CONVERGED";
+                    lblSeidelStatus.ForeColor = Color.FromArgb(39, 174, 96);
+                }
+                else
+                {
+                    lblSeidelStatus.Text = "Status: NOT CONVERGED";
+                    lblSeidelStatus.ForeColor = Color.FromArgb(192, 57, 43);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnSeidelConvergent_Click(object sender, EventArgs e)
+        {
+            // Diagonally dominant 4×4 system — convergence guaranteed
+            // Solution: x = [1, 2, 3, 4]
+            int n = 4;
+            nudSeidelSize.Value = n;
+            UpdateSeidelSize(n);
+
+            double[,] A = {
+                {10, -1,  2,  0},
+                {-1, 11, -1,  3},
+                { 2, -1, 10, -1},
+                { 0,  3, -1,  8}
+            };
+            // b = A * [1, 2, 3, 4]
+            double[] b = new double[n];
+            for (int i = 0; i < n; i++)
+                for (int j = 0; j < n; j++)
+                    b[i] += A[i, j] * (j + 1);
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                    dgvSeidelA.Rows[i].Cells[j].Value = A[i, j].ToString("F2");
+                dgvSeidelB.Rows[i].Cells[0].Value = b[i].ToString("F4");
+            }
+
+            for (int i = 0; i < n; i++) dgvSeidelX.Rows[i].Cells[0].Value = "";
+            lblSeidelIterations.Text = "Iterations: —";
+
+            // Auto-run the solver
+            BtnSeidelSolve_Click(sender, e);
+
+            // Prepend context to the log
+            rtbSeidelLog.Text =
+                "=== TEST: CONVERGENT EXAMPLE ===\r\n" +
+                "Matrix is STRICTLY DIAGONALLY DOMINANT:\r\n" +
+                "  Row 1: |10| > |-1|+|2|+|0| = 3   ✓\r\n" +
+                "  Row 2: |11| > |-1|+|-1|+|3| = 5  ✓\r\n" +
+                "  Row 3: |10| > |2|+|-1|+|-1| = 4  ✓\r\n" +
+                "  Row 4:  |8| > |0|+|3|+|-1| = 4   ✓\r\n" +
+                "Condition SATISFIED — Seidel method GUARANTEED to converge.\r\n" +
+                "Expected solution: x = [1, 2, 3, 4]\r\n\r\n" +
+                rtbSeidelLog.Text;
+        }
+
+        private void BtnSeidelDivergent_Click(object sender, EventArgs e)
+        {
+            // NOT diagonally dominant — Seidel will NOT converge
+            int n = 3;
+            nudSeidelSize.Value = n;
+            UpdateSeidelSize(n);
+
+            double[,] A = {
+                {1, 2, 3},
+                {4, 1, 2},
+                {3, 4, 1}
+            };
+            double[] b = { 6, 7, 8 };
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                    dgvSeidelA.Rows[i].Cells[j].Value = A[i, j].ToString("F2");
+                dgvSeidelB.Rows[i].Cells[0].Value = b[i].ToString("F2");
+            }
+
+            for (int i = 0; i < n; i++) dgvSeidelX.Rows[i].Cells[0].Value = "";
+            lblSeidelIterations.Text = "Iterations: —";
+
+            // Auto-run the solver so user can see it does NOT converge
+            BtnSeidelSolve_Click(sender, e);
+
+            // Prepend context to the log
+            rtbSeidelLog.Text =
+                "=== TEST: DIVERGENT EXAMPLE ===\r\n" +
+                "Matrix is NOT diagonally dominant:\r\n" +
+                "  Row 1: |1| < |2|+|3| = 5  ✗\r\n" +
+                "  Row 2: |1| < |4|+|2| = 6  ✗\r\n" +
+                "  Row 3: |1| < |3|+|4| = 7  ✗\r\n" +
+                "Condition NOT SATISFIED — Seidel method diverges!\r\n" +
+                "Observe: max|Δx| grows → method exhausts all max-iterations.\r\n\r\n" +
+                rtbSeidelLog.Text;
+        }
+
+        private void BtnSeidelRandom_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                int n = (int)nudSeidelSize.Value;
+                UpdateSeidelSize(n);
+                var rand = new Random();
+
+                // Generate random diagonally dominant matrix
+                for (int i = 0; i < n; i++)
+                {
+                    double offSum = 0;
+                    for (int j = 0; j < n; j++)
+                    {
+                        if (j != i)
+                        {
+                            double v = rand.Next(-5, 6);
+                            dgvSeidelA.Rows[i].Cells[j].Value = v.ToString();
+                            offSum += Math.Abs(v);
+                        }
+                    }
+                    double diag = offSum + rand.Next(1, 6) + 1;
+                    dgvSeidelA.Rows[i].Cells[i].Value = diag.ToString("F1");
+                    dgvSeidelB.Rows[i].Cells[0].Value = rand.Next(-20, 21).ToString();
+                }
+
+                rtbSeidelLog.Text = "Random diagonally dominant matrix generated. Press 'Solve (Seidel)'.";
+                lblSeidelStatus.Text = "Status: Ready";
+                lblSeidelStatus.ForeColor = Color.FromArgb(52, 73, 94);
+                lblSeidelIterations.Text = "Iterations: —";
+                for (int i = 0; i < n; i++) dgvSeidelX.Rows[i].Cells[0].Value = "";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnSeidelClear_Click(object sender, EventArgs e)
+        {
+            int n = (int)nudSeidelSize.Value;
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                    dgvSeidelA.Rows[i].Cells[j].Value = "0";
+                dgvSeidelB.Rows[i].Cells[0].Value = "0";
+                dgvSeidelX.Rows[i].Cells[0].Value = "";
+            }
+            rtbSeidelLog.Clear();
+            lblSeidelStatus.Text = "Status: Ready";
+            lblSeidelStatus.ForeColor = Color.FromArgb(52, 73, 94);
+            lblSeidelIterations.Text = "Iterations: —";
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        //   BAND GAUSS TAB
+        // ════════════════════════════════════════════════════════════════════
+
+        private void CreateBandGaussTab()
+        {
+            var mainPanel = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 2,
+                Padding = new Padding(8)
+            };
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42F));
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22F));
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36F));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 55F));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 45F));
+
+            // ── Panel A: band matrix input ────────────────────────────────
+            var panelA = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle, Padding = new Padding(8), BackColor = Color.White };
+            var lblA = new Label { Text = "Band Matrix A", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94), Location = new Point(8, 8), AutoSize = true };
+            var lblHint = new Label { Text = "Grey cells = outside band (fixed 0)", Font = new Font("Segoe UI", 7), ForeColor = Color.Gray, Location = new Point(8, 30), AutoSize = true };
+
+            // Size / bandwidth controls
+            var ctrlPanel = new Panel { Location = new Point(8, 48), Size = new Size(410, 28) };
+            var lN = new Label { Text = "n:", Location = new Point(0, 6), AutoSize = true, ForeColor = Color.FromArgb(52, 73, 94) };
+            nudBandSize = new NumericUpDown { Minimum = 2, Maximum = 20, Value = 5, Location = new Point(18, 3), Width = 45, BorderStyle = BorderStyle.FixedSingle };
+            var lP = new Label { Text = "P:", Location = new Point(70, 6), AutoSize = true, ForeColor = Color.FromArgb(52, 73, 94) };
+            nudBandP = new NumericUpDown { Minimum = 0, Maximum = 10, Value = 1, Location = new Point(88, 3), Width = 45, BorderStyle = BorderStyle.FixedSingle };
+            var lQ = new Label { Text = "Q:", Location = new Point(140, 6), AutoSize = true, ForeColor = Color.FromArgb(52, 73, 94) };
+            nudBandQ = new NumericUpDown { Minimum = 0, Maximum = 10, Value = 1, Location = new Point(158, 3), Width = 45, BorderStyle = BorderStyle.FixedSingle };
+            btnBandResize = new Button { Text = "Resize", Location = new Point(210, 2), Size = new Size(70, 23), BackColor = Color.FromArgb(52, 152, 219), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
+            btnBandResize.FlatAppearance.BorderSize = 0;
+            btnBandResize.Click += (s, ev) => UpdateBandSize((int)nudBandSize.Value, (int)nudBandP.Value, (int)nudBandQ.Value);
+            ctrlPanel.Controls.AddRange(new Control[] { lN, nudBandSize, lP, nudBandP, lQ, nudBandQ, btnBandResize });
+
+            var scrollA = new Panel { Location = new Point(8, 80), Size = new Size(405, 210), AutoScroll = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(236, 240, 241) };
+            dgvBandA = CreateSlaeStyleDGV(700, 450);
+            dgvBandA.CellBeginEdit += (s, ev) =>
+            {
+                int i = ev.RowIndex, j = ev.ColumnIndex;
+                int p2 = (int)nudBandP.Value, q2 = (int)nudBandQ.Value;
+                if (j < i - p2 || j > i + q2)
+                    ev.Cancel = true;
+            };
+            scrollA.Controls.Add(dgvBandA);
+            panelA.Controls.AddRange(new Control[] { lblA, lblHint, ctrlPanel, scrollA });
+
+            // ── Panel B: vector B + band vector display ───────────────────
+            var panelB = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle, Padding = new Padding(8), BackColor = Color.White };
+            var lblB = new Label { Text = "Vector B", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94), Location = new Point(8, 8), AutoSize = true };
+
+            var scrollB = new Panel { Location = new Point(8, 35), Size = new Size(210, 170), AutoScroll = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(236, 240, 241) };
+            dgvBandB = new DataGridView
+            {
+                AllowUserToAddRows = false, AllowUserToDeleteRows = false, RowHeadersVisible = true,
+                ColumnHeadersHeight = 25, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
+                ColumnCount = 1, Width = 300, Height = 500,
+                Font = new Font("Segoe UI", 8), BackgroundColor = Color.White,
+                BorderStyle = BorderStyle.None, GridColor = Color.FromArgb(189, 195, 199)
+            };
+            dgvBandB.EnableHeadersVisualStyles = false;
+            dgvBandB.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgvBandB.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgvBandB.RowHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgvBandB.RowHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgvBandB.Columns[0].HeaderText = "b";
+            dgvBandB.Columns[0].Width = 100;
+            scrollB.Controls.Add(dgvBandB);
+            panelB.Controls.AddRange(new Control[] { lblB, scrollB });
+
+            // ── Panel X: solution ─────────────────────────────────────────
+            var panelX = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle, Padding = new Padding(8), BackColor = Color.White };
+            var lblX = new Label { Text = "Solution X", Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94), Location = new Point(8, 8), AutoSize = true };
+            lblBandStatus = new Label { Text = "Status: Ready", Location = new Point(8, 34), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94) };
+
+            var scrollX = new Panel { Location = new Point(8, 60), Size = new Size(280, 220), AutoScroll = true, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(236, 240, 241) };
+            dgvBandX = new DataGridView
+            {
+                AllowUserToAddRows = false, AllowUserToDeleteRows = false, ReadOnly = true,
+                RowHeadersVisible = true, ColumnHeadersHeight = 25,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None,
+                ColumnCount = 1, Width = 400, Height = 500,
+                BackgroundColor = Color.FromArgb(245, 247, 250),
+                Font = new Font("Segoe UI", 8), BorderStyle = BorderStyle.None,
+                GridColor = Color.FromArgb(189, 195, 199)
+            };
+            dgvBandX.EnableHeadersVisualStyles = false;
+            dgvBandX.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgvBandX.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgvBandX.RowHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
+            dgvBandX.RowHeadersDefaultCellStyle.ForeColor = Color.White;
+            dgvBandX.Columns[0].HeaderText = "x";
+            dgvBandX.Columns[0].Width = 160;
+            scrollX.Controls.Add(dgvBandX);
+            panelX.Controls.AddRange(new Control[] { lblX, lblBandStatus, scrollX });
+
+            // ── Bottom panel: buttons + TESTS + band vector + log ────────
+            var panelBot = new Panel { Dock = DockStyle.Fill, Padding = new Padding(8), BackColor = Color.White };
+
+            // Main action buttons
+            var btnRow = new Panel { Location = new Point(8, 6), Size = new Size(1200, 38), AutoScroll = true };
+            btnBandSolve = MakeBtn("Solve (Band Gauss)", 0,   Color.FromArgb(46, 204, 113), 150);
+            var btnBandRnd = MakeBtn("Random",           160, Color.FromArgb(52, 152, 219),  90);
+            btnBandClear = MakeBtn("Clear",              260, Color.FromArgb(231, 76, 60),   80);
+            btnBandRnd.Click += BtnBandRandom_Click;
+            btnRow.Controls.AddRange(new Control[] { btnBandSolve, btnBandRnd, btnBandClear });
+
+            // Auto-update compact band vector display whenever a cell is edited
+            dgvBandA.CellValueChanged += (s, ev) =>
+            {
+                try
+                {
+                    int n2 = (int)nudBandSize.Value, p2 = (int)nudBandP.Value, q2 = (int)nudBandQ.Value;
+                    if (rtbBandVector != null)
+                        rtbBandVector.Text = GetBandMatrixFromDGV(n2, p2, q2).FormatBandVector();
+                }
+                catch { }
+            };
+
+            // TESTS panel — two examples as required by the assignment
+            var bandTestPanel = new Panel
+            {
+                Location = new Point(8, 50),
+                Size = new Size(1180, 35),
+                BackColor = Color.FromArgb(236, 240, 241),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            var lblBandTests = new Label
+            {
+                Text = "TESTS:",
+                Location = new Point(8, 10),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = Color.FromArgb(52, 73, 94)
+            };
+            btnBandExample = new Button
+            {
+                Text = "Tridiagonal (P=1, Q=1, 5×5)",
+                Location = new Point(70, 6), Size = new Size(210, 22),
+                BackColor = Color.FromArgb(52, 152, 219), ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnBandExample.FlatAppearance.BorderSize = 0;
+            var btnBandPentadiag = new Button
+            {
+                Text = "Pentadiagonal (P=2, Q=2, 6×6)",
+                Location = new Point(290, 6), Size = new Size(230, 22),
+                BackColor = Color.FromArgb(155, 89, 182), ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnBandPentadiag.FlatAppearance.BorderSize = 0;
+            btnBandPentadiag.Click += BtnBandPentadiag_Click;
+            bandTestPanel.Controls.AddRange(new Control[] { lblBandTests, btnBandExample, btnBandPentadiag });
+
+            // Two columns in bottom: band vector display | log
+            var splitBot = new TableLayoutPanel { Location = new Point(8, 90), Size = new Size(1185, 150), ColumnCount = 2, RowCount = 1 };
+            splitBot.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
+            splitBot.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
+
+            var lblBV = new Label { Text = "Compact Band Vector:", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94), Dock = DockStyle.Top };
+            var bvPanel = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(236, 240, 241), AutoScroll = true };
+            rtbBandVector = new RichTextBox { Width = 1500, Height = 600, ReadOnly = true, Font = new Font("Consolas", 8), BackColor = Color.White, WordWrap = false, BorderStyle = BorderStyle.None };
+            bvPanel.Controls.Add(rtbBandVector);
+
+            var leftBV = new Panel { Dock = DockStyle.Fill };
+            leftBV.Controls.Add(bvPanel);
+            leftBV.Controls.Add(lblBV);
+
+            var lblLg = new Label { Text = "Elimination Log:", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.FromArgb(52, 73, 94), Dock = DockStyle.Top };
+            var lgPanel = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.FromArgb(236, 240, 241), AutoScroll = true };
+            rtbBandLog = new RichTextBox { Width = 2000, Height = 600, ReadOnly = true, Font = new Font("Consolas", 8), BackColor = Color.White, WordWrap = false, BorderStyle = BorderStyle.None };
+            lgPanel.Controls.Add(rtbBandLog);
+
+            var rightLg = new Panel { Dock = DockStyle.Fill };
+            rightLg.Controls.Add(lgPanel);
+            rightLg.Controls.Add(lblLg);
+
+            splitBot.Controls.Add(leftBV, 0, 0);
+            splitBot.Controls.Add(rightLg, 1, 0);
+
+            panelBot.Controls.AddRange(new Control[] { btnRow, bandTestPanel, splitBot });
+
+            mainPanel.Controls.Add(panelA, 0, 0);
+            mainPanel.Controls.Add(panelB, 1, 0);
+            mainPanel.Controls.Add(panelX, 2, 0);
+            mainPanel.Controls.Add(panelBot, 0, 1);
+            mainPanel.SetColumnSpan(panelBot, 3);
+
+            tabBandGauss.Controls.Add(mainPanel);
+
+            UpdateBandSize(5, 1, 1);
+
+            btnBandSolve.Click += BtnBandSolve_Click;
+            btnBandExample.Click += BtnBandExample_Click;
+            btnBandClear.Click += BtnBandClear_Click;
+        }
+
+        private void UpdateBandSize(int n, int p, int q)
+        {
+            if (dgvBandA == null) return;
+            int cw = Math.Max(45, 360 / n);
+
+            dgvBandA.ColumnCount = n;
+            dgvBandA.RowCount = n;
+            for (int j = 0; j < n; j++) { dgvBandA.Columns[j].Width = cw; dgvBandA.Columns[j].HeaderText = $"x{j + 1}"; }
+            for (int i = 0; i < n; i++)
+            {
+                dgvBandA.Rows[i].Height = 22;
+                dgvBandA.Rows[i].HeaderCell.Value = $"r{i + 1}";
+                for (int j = 0; j < n; j++)
+                {
+                    bool inBand = (j >= i - p && j <= i + q);
+                    var cell = dgvBandA.Rows[i].Cells[j];
+                    cell.ReadOnly = !inBand;
+                    cell.Style.BackColor = inBand ? Color.White : Color.FromArgb(189, 195, 199);
+                    cell.Style.ForeColor = inBand ? Color.Black : Color.Gray;
+                    if (!inBand)
+                        cell.Value = "0";
+                    else if (cell.Value == null || string.IsNullOrEmpty(cell.Value.ToString()))
+                        cell.Value = "0";
+                }
+            }
+            dgvBandA.Width = Math.Max(360, n * (cw + 15));
+            dgvBandA.Height = Math.Max(300, n * 24);
+
+            dgvBandB.RowCount = n;
+            for (int i = 0; i < n; i++)
+            {
+                dgvBandB.Rows[i].Height = 22;
+                dgvBandB.Rows[i].HeaderCell.Value = $"r{i + 1}";
+                if (dgvBandB.Rows[i].Cells[0].Value == null || string.IsNullOrEmpty(dgvBandB.Rows[i].Cells[0].Value.ToString()))
+                    dgvBandB.Rows[i].Cells[0].Value = "0";
+            }
+            dgvBandB.Height = Math.Max(400, n * 24);
+
+            dgvBandX.RowCount = n;
+            for (int i = 0; i < n; i++)
+            {
+                dgvBandX.Rows[i].Height = 22;
+                dgvBandX.Rows[i].HeaderCell.Value = $"x{i + 1}";
+                dgvBandX.Rows[i].Cells[0].Value = "";
+            }
+            dgvBandX.Height = Math.Max(400, n * 24);
+
+            // Auto-refresh band vector display
+            try { rtbBandVector.Text = GetBandMatrixFromDGV(n, p, q).FormatBandVector(); }
+            catch { }
+        }
+
+        private BandedMatrix GetBandMatrixFromDGV(int n, int p, int q)
+        {
+            var bm = new BandedMatrix(n, p, q);
+            for (int i = 0; i < n; i++)
+                for (int j = Math.Max(0, i - p); j <= Math.Min(n - 1, i + q); j++)
+                {
+                    double.TryParse(dgvBandA.Rows[i].Cells[j].Value?.ToString(), out double v);
+                    bm[i, j] = v;
+                }
+            return bm;
+        }
+
+        private Vector GetBandVectorFromDGV()
+        {
+            int n = dgvBandB.RowCount;
+            var b = new Vector(n);
+            for (int i = 0; i < n; i++)
+            {
+                double.TryParse(dgvBandB.Rows[i].Cells[0].Value?.ToString(), out double v);
+                b[i] = v;
+            }
+            return b;
+        }
+
+        private void BtnBandSolve_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                rtbBandLog.Clear();
+                int n = (int)nudBandSize.Value;
+                int p = (int)nudBandP.Value;
+                int q = (int)nudBandQ.Value;
+
+                BandedMatrix bm = GetBandMatrixFromDGV(n, p, q);
+                Vector b = GetBandVectorFromDGV();
+
+                // Show updated band vector
+                rtbBandVector.Text = bm.FormatBandVector();
+
+                var solver = new BandedGaussianSolver(bm, b);
+                solver.Solve();
+
+                rtbBandLog.Text = solver.Log;
+
+                for (int i = 0; i < solver.Solution.Size; i++)
+                    dgvBandX.Rows[i].Cells[0].Value = solver.Solution[i].ToString("F8");
+
+                lblBandStatus.Text = "Status: Solved successfully";
+                lblBandStatus.ForeColor = Color.FromArgb(39, 174, 96);
+            }
+            catch (Exception ex)
+            {
+                lblBandStatus.Text = "Status: Error";
+                lblBandStatus.ForeColor = Color.FromArgb(192, 57, 43);
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnBandExample_Click(object sender, EventArgs e)
+        {
+            // Classic tridiagonal system from finite differences (P=1, Q=1)
+            // A: main diag = 4, off-diag = -1   →  solution x = [1,1,1,1,1]
+            int n = 5, p = 1, q = 1;
+            nudBandSize.Value = n; nudBandP.Value = p; nudBandQ.Value = q;
+            UpdateBandSize(n, p, q);
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    if (i == j)
+                        dgvBandA.Rows[i].Cells[j].Value = "4";
+                    else if (j == i - 1 || j == i + 1)
+                        dgvBandA.Rows[i].Cells[j].Value = "-1";
+                }
+                // b = A*[1,1,…,1]: boundary rows → 3, inner rows → 2
+                dgvBandB.Rows[i].Cells[0].Value = (i == 0 || i == n - 1) ? "3" : "2";
+            }
+
+            for (int i = 0; i < n; i++) dgvBandX.Rows[i].Cells[0].Value = "";
+            try { rtbBandVector.Text = GetBandMatrixFromDGV(n, p, q).FormatBandVector(); }
+            catch { }
+
+            // Auto-run
+            BtnBandSolve_Click(sender, e);
+
+            rtbBandLog.Text =
+                "=== TEST 1: TRIDIAGONAL BAND MATRIX (P=1, Q=1) ===\r\n" +
+                "Classic finite-difference Poisson system:\r\n" +
+                "  Main diagonal: 4,  Sub/super diagonals: -1\r\n" +
+                $"  Band vector length: {n * 3}  vs full matrix: {n * n}  (saves {n * n - n * 3} zeros)\r\n" +
+                "Expected solution: x = [1, 1, 1, 1, 1]\r\n\r\n" +
+                rtbBandLog.Text;
+
+            lblBandStatus.ForeColor = Color.FromArgb(52, 73, 94);
+        }
+
+        private void BtnBandPentadiag_Click(object sender, EventArgs e)
+        {
+            // Pentadiagonal system (P=2, Q=2) — symmetric, diagonally dominant
+            // Main: 6,  ±1 diagonals: -2,  ±2 diagonals: 0.5
+            // Solution x = [1,1,1,1,1,1]
+            int n = 6, p = 2, q = 2;
+            nudBandSize.Value = n; nudBandP.Value = p; nudBandQ.Value = q;
+            UpdateBandSize(n, p, q);
+
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    int d = Math.Abs(i - j);
+                    if (d == 0) dgvBandA.Rows[i].Cells[j].Value = "6";
+                    else if (d == 1) dgvBandA.Rows[i].Cells[j].Value = "-2";
+                    else if (d == 2) dgvBandA.Rows[i].Cells[j].Value = "0.5";
+                }
+                // b = A*[1,1,…,1]
+                double bi = 0;
+                for (int j = Math.Max(0, i - p); j <= Math.Min(n - 1, i + q); j++)
+                {
+                    int d = Math.Abs(i - j);
+                    bi += d == 0 ? 6 : d == 1 ? -2 : 0.5;
+                }
+                dgvBandB.Rows[i].Cells[0].Value = bi.ToString("F1");
+            }
+
+            for (int i = 0; i < n; i++) dgvBandX.Rows[i].Cells[0].Value = "";
+            try { rtbBandVector.Text = GetBandMatrixFromDGV(n, p, q).FormatBandVector(); }
+            catch { }
+
+            // Auto-run
+            BtnBandSolve_Click(sender, e);
+
+            rtbBandLog.Text =
+                "=== TEST 2: PENTADIAGONAL BAND MATRIX (P=2, Q=2) ===\r\n" +
+                "Symmetric 5-diagonal system:\r\n" +
+                "  Main diag: 6,  ±1 diag: -2,  ±2 diag: 0.5\r\n" +
+                $"  Band vector length: {n * 5}  vs full matrix: {n * n}  (saves {n * n - n * 5} zeros)\r\n" +
+                "Expected solution: x = [1, 1, 1, 1, 1, 1]\r\n\r\n" +
+                rtbBandLog.Text;
+
+            lblBandStatus.ForeColor = Color.FromArgb(52, 73, 94);
+        }
+
+        private void BtnBandRandom_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                int n = (int)nudBandSize.Value;
+                int p = (int)nudBandP.Value;
+                int q = (int)nudBandQ.Value;
+                UpdateBandSize(n, p, q);
+
+                var rand = new Random();
+
+                // Generate diagonally dominant random band matrix
+                for (int i = 0; i < n; i++)
+                {
+                    double offSum = 0;
+                    for (int j = Math.Max(0, i - p); j <= Math.Min(n - 1, i + q); j++)
+                    {
+                        if (j == i) continue;
+                        double v = rand.Next(-5, 6);
+                        dgvBandA.Rows[i].Cells[j].Value = v.ToString();
+                        offSum += Math.Abs(v);
+                    }
+                    // Diagonal > sum of off-diagonal (guarantees non-singular)
+                    double diag = offSum + rand.Next(2, 6) + 1;
+                    dgvBandA.Rows[i].Cells[i].Value = diag.ToString("F1");
+                    dgvBandB.Rows[i].Cells[0].Value = rand.Next(-20, 21).ToString();
+                }
+
+                try { rtbBandVector.Text = GetBandMatrixFromDGV(n, p, q).FormatBandVector(); }
+                catch { }
+
+                rtbBandLog.Text = $"Random band matrix generated (n={n}, P={p}, Q={q}), diagonal dominant.\r\nPress 'Solve (Band Gauss)'.";
+                lblBandStatus.Text = "Status: Ready";
+                lblBandStatus.ForeColor = Color.FromArgb(52, 73, 94);
+                for (int i = 0; i < n; i++) dgvBandX.Rows[i].Cells[0].Value = "";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnBandClear_Click(object sender, EventArgs e)
+        {
+            int n = (int)nudBandSize.Value, p = (int)nudBandP.Value, q = (int)nudBandQ.Value;
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                    if (j >= i - p && j <= i + q)
+                        dgvBandA.Rows[i].Cells[j].Value = "0";
+                dgvBandB.Rows[i].Cells[0].Value = "0";
+                dgvBandX.Rows[i].Cells[0].Value = "";
+            }
+            rtbBandLog.Clear();
+            rtbBandVector.Text = "";
+            lblBandStatus.Text = "Status: Ready";
+            lblBandStatus.ForeColor = Color.FromArgb(52, 73, 94);
         }
     }
 }
